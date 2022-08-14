@@ -44,7 +44,7 @@ With [vim-plug,](https://github.com/junegunn/vim-plug)
 " .vimrc
 call plug#begin('~/.vim/bundle')
 " ...
-Plug 'Yilin-Yang/vim-markbar'
+Plug 'mynvimconfigs/vim-markbar'
 " ...
 call plug#end()
 ```
@@ -70,7 +70,7 @@ With [pathogen,](https://github.com/tpope/vim-pathogen)
 
 ```bash
 cd ~/.vim/bundle
-git clone https://github.com/Yilin-Yang/vim-markbar.git
+git clone https://github.com/mynvimconfigs/vim-markbar.git
 ```
 
 Quick Start
