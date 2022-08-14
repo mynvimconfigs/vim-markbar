@@ -400,7 +400,7 @@ if markbar#settings#ExplicitlyRemapMarkMappings()
 
     let g:markbar_backtick_remapper =
         \ markbar#KeyMapper#NewWithSameModsPrefixes(
-            \ markbar#constants#ALL_MARKS_STRING(), '', '`',
+            \ markbar#constants#ALL_MARKS_STRING(), '',
             \ function('<SID>MarkbarGoToMark'))
     call g:markbar_backtick_remapper.setMappings('noremap <silent>')
 endif
