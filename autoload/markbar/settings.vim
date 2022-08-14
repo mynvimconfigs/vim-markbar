@@ -679,7 +679,7 @@ endfunction
 "                           markbar with backtick-like behavior.
 function! markbar#settings#PeekabooBacktickMapping() abort
     if !exists('g:markbar_peekaboo_backtick_mapping')
-        let g:markbar_peekaboo_backtick_mapping = 'O'
+        let g:markbar_peekaboo_backtick_mapping = '\''
     endif
     call s:AssertType(
         \ g:markbar_peekaboo_backtick_mapping,
