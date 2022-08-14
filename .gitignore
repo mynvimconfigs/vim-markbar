@@ -1,0 +1,8 @@
+test.vim
+temp.vim
+Session.vim
+*.swo
+*.swp
+*temp
+doc/tags
+viminfo_or_shada

@@ -1,0 +1,176 @@
+Include: clear-marks.vader
+Include: load-test-files.vader
+Include: MarkDataHelpers.vader
+
+Execute (MarkbarModel: Global Settings):
+  let g:markbar_num_lines_context = 3
+  let g:rosters = markbar#ShaDaRosters#New()
+  let g:markbar_model = markbar#MarkbarModel#New(g:rosters)
+
+Execute (MarkbarModel: Populate Local Cache):
+  execute 'normal :edit! ' . '50lines.txt' . "\<cr>"
+  execute  '5mark a'
+  execute '15mark b'
+  execute '25mark c'
+  execute '35mark d'
+  execute '45mark e'
+  let g:filepath_50lines = expand('%:p')
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  let g:bufno_50lines = bufnr('%')
+  let buffer_marks = g:markbar_model.getBufferCache(g:bufno_50lines)['marks_dict']
+  call AssertParsedCorrectly(['a',  5, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['a'])
+  call AssertParsedCorrectly(['b', 15, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['b'])
+  call AssertParsedCorrectly(['c', 25, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['c'])
+  call AssertParsedCorrectly(['d', 35, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['d'])
+  call AssertParsedCorrectly(['e', 45, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['e'])
+
+Execute (MarkbarModel: Populate Global Cache):
+  " should still be on 50lines.txt, but just in case,
+  execute 'normal! :e! #' . g:bufno_50lines . "\<cr>"
+  execute '30mark C'
+  execute '40mark D'
+  execute '50mark E'
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  " check globals
+  let global_marks =
+    \ g:markbar_model.getBufferCache(0)['marks_dict']
+  call AssertParsedCorrectly(['C', 30, 1, '50lines.txt', g:filepath_50lines],   global_marks['C'])
+  call AssertParsedCorrectly(['D', 40, 1, '50lines.txt', g:filepath_50lines],   global_marks['D'])
+  call AssertParsedCorrectly(['E', 50, 1, '50lines.txt', g:filepath_50lines],   global_marks['E'])
+
+Execute (MarkbarModel: Add More Global Marks; Add Local Marks):
+  execute 'normal :edit! ' . '30lines.txt' . "\<cr>"
+  let g:bufno_30lines = bufnr('%')
+  execute '10mark A'
+  execute '20mark B'
+
+  execute  '1mark e'
+  execute  '5mark d'
+  execute '10mark c'
+  execute '15mark b'
+  execute '20mark a'
+  let g:filepath_30lines = expand('%:p')
+
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  let buffer_marks = g:markbar_model.getBufferCache(g:bufno_30lines)['marks_dict']
+  call AssertParsedCorrectly(['e',  1, 1, '30lines.txt', g:filepath_30lines],   buffer_marks['e'])
+  call AssertParsedCorrectly(['d',  5, 1, '30lines.txt', g:filepath_30lines],   buffer_marks['d'])
+  call AssertParsedCorrectly(['c', 10, 1, '30lines.txt', g:filepath_30lines],   buffer_marks['c'])
+  call AssertParsedCorrectly(['b', 15, 1, '30lines.txt', g:filepath_30lines],   buffer_marks['b'])
+  call AssertParsedCorrectly(['a', 20, 1, '30lines.txt', g:filepath_30lines],   buffer_marks['a'])
+
+  " make sure that we didn't somehow overwrite these older ones
+  let buffer_marks = g:markbar_model.getBufferCache(g:bufno_50lines)['marks_dict']
+  call AssertParsedCorrectly(['a',  5, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['a'])
+  call AssertParsedCorrectly(['b', 15, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['b'])
+  call AssertParsedCorrectly(['c', 25, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['c'])
+  call AssertParsedCorrectly(['d', 35, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['d'])
+  call AssertParsedCorrectly(['e', 45, 1, '50lines.txt', g:filepath_50lines],   buffer_marks['e'])
+
+  let global_marks =
+    \ g:markbar_model.getBufferCache(0)['marks_dict']
+  call AssertParsedCorrectly(['A', 10, 1, '30lines.txt', g:filepath_30lines],   global_marks['A'])
+  call AssertParsedCorrectly(['B', 20, 1, '30lines.txt', g:filepath_30lines],   global_marks['B'])
+  call AssertParsedCorrectly(['C', 30, 1, '50lines.txt', g:filepath_50lines],   global_marks['C'])
+  call AssertParsedCorrectly(['D', 40, 1, '50lines.txt', g:filepath_50lines],   global_marks['D'])
+  call AssertParsedCorrectly(['E', 50, 1, '50lines.txt', g:filepath_50lines],   global_marks['E'])
+
+Execute (BufferCache: Test Name Preservation Across Cache Updates):
+  execute 'normal :edit! ' . '30lines.txt' . "\<cr>"
+  let local_mark = g:markbar_model.getMarkData('c')
+  call local_mark.setUserName('foo')
+  let global_mark = g:markbar_model.getMarkData('E')
+  call global_mark.setUserName('goo')
+
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  AssertEqual 'foo', local_mark.getUserName()
+  AssertEqual 'goo', global_mark.getUserName()
+
+Execute (MarkbarModel: Fetch Contexts for Onscreen Buffer):
+  execute 'normal :edit! ' . '50lines.txt' . "\<cr>"
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  " Only check 'indicator' values, for brevity. If these are fine, and if the
+  " `test-fetchlines.vader` tests pass, assume that context fetching itself is
+  " fine.
+  let buffer_marks = g:markbar_model.getBufferCache(g:bufno_50lines)['marks_dict']
+
+  let expected = [
+      \ 'fourth line',
+      \ 'fifth line',
+      \ 'sixth line',
+    \ ]
+  AssertEqual expected, buffer_marks['a'].getContext()
+
+  let expected = [
+      \ 'twenty-fourth line',
+      \ 'twenty-fifth line',
+      \ 'twenty-sixth line',
+    \ ]
+  AssertEqual expected, buffer_marks['c'].getContext()
+
+  let expected = [
+      \ 'forty-fourth line',
+      \ 'forty-fifth line',
+      \ 'forty-sixth line',
+    \ ]
+  AssertEqual expected, buffer_marks['e'].getContext()
+
+
+Execute (MarkbarModel: Delete Mark, Update Local Contexts, 30lines.txt):
+  execute 'normal :edit! ' . '30lines.txt' . "\<cr>"
+  execute 'delmarks a'
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  let buffer_marks = g:markbar_model.getBufferCache(g:bufno_30lines)['marks_dict']
+  Assert !has_key(buffer_marks, 'a')
+
+Execute (MarkbarModel: Update Globals in Offscreen, Unloaded Buffer):
+  execute 'normal :edit! ' . '30lines.txt' . "\<cr>"
+  execute 'bunload ' . g:bufno_50lines
+  call g:markbar_model.updateCurrentAndGlobal()
+Then:
+  let global_marks =
+    \ g:markbar_model.getBufferCache(0)['marks_dict']
+  " even after unloading the buffer, the plugin should still be able to fetch
+  " contexts from the files on disk
+  let expected = [
+      \ 'ninth line',
+      \ 'tenth line',
+      \ 'eleventh line',
+    \ ]
+  AssertEqual expected, global_marks['A'].getContext()
+
+  let expected = [
+      \ 'twenty-ninth line',
+      \ 'thirtieth line',
+      \ 'thirty-first line',
+    \ ]
+  AssertEqual expected, global_marks['C'].getContext()
+
+  let expected = [
+      \ 'forty-ninth line',
+      \ 'fiftieth line',
+      \ '~',
+    \ ]
+  AssertEqual expected, global_marks['E'].getContext()
+
+Execute (MarkbarModel: Active Buffer Check):
+  new
+  let curr_buffer = bufnr('%')
+Then:
+  let result = g:markbar_model.getActiveBuffer()
+  AssertEqual curr_buffer, result
+
+Execute (MarkbarModel: Cache Eviction):
+  " successful eviction
+  Assert has_key(g:markbar_model['_buffer_caches'], g:bufno_30lines)
+  Assert g:markbar_model.evictBufferCache(g:bufno_30lines)
+  Assert !has_key(g:markbar_model['_buffer_caches'], g:bufno_30lines)
+
+  " unsuccessful eviction of not-present key
+  Assert !g:markbar_model.evictBufferCache(g:bufno_30lines)

@@ -1,0 +1,222 @@
+Execute (Initialize):
+  let g:format_options = {
+          \ 'marks_to_display': '',
+          \ 'verbose_help_text': ['" this is verbose help text', '" foobar'],
+          \ 'short_help_text': ['" this is short help text'],
+          \ 'show_verbose_help': v:false,
+          \ 'num_lines_context_around_local': 3,
+          \ 'num_lines_context_around_global': 3,
+          \ 'section_separator': [],
+          \ 'indent_block': '  ',
+          \ 'enable_mark_highlighting': v:false,
+          \ 'mark_marker': markbar#settings#MarkMarker(),
+          \ 'jump_like_backtick': v:true,
+          \ 'local_mark_name_format_str': '(l: %d, c: %d) %s',
+          \ 'local_mark_name_arguments': ['line', 'col', 'name'],
+          \ 'file_mark_name_format_str': '%s [l: %d, c: %d]',
+          \ 'file_mark_name_arguments': ['fname', 'line', 'col'],
+          \ 'numbered_mark_name_format_str': '%s [l: %d, c: %d]',
+          \ 'numbered_mark_name_arguments': ['fname', 'line', 'col'],
+      \ }
+  let g:format = markbar#MarkbarFormat#New(g:format_options)
+  let g:generator = markbar#MarkbarTextGenerator#New(g:format)
+
+Given:
+  
+Execute (MarkbarTextGenerator prints short help text):
+  let g:bufnr = bufnr('%')
+  let g:local_marks = {}
+  let g:global_marks = {}
+  function PrintMarkbarText() abort
+    call markbar#helpers#ReplaceBuffer(g:bufnr,
+      \ g:generator.getText(g:local_marks, g:global_marks))
+  endfunction
+
+  call PrintMarkbarText()
+Expect:
+  " this is short help text
+
+Execute (MarkbarTextGenerator prints long help text):
+  call g:generator.format.setOption('show_verbose_help', v:true)
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+
+Execute (MarkbarTextGenerator prints no marks with empty 'marks_to_display'):
+  function! SynthesizeMark(mark_char, line_no, col_no, bufname,
+                         \ filename, context) abort
+    let l:mark = markbar#MarkData#New(
+        \ a:mark_char, [0, a:line_no, a:col_no, 0], a:bufname, a:filename)
+    call l:mark.setContext(a:context)
+    let l:mark.getFilename = function({a -> a}, [a:filename])
+    return l:mark
+  endfunction
+
+  let g:local_marks['a'] = SynthesizeMark('a', 1, 2, 'curbuf', '/foo/bar/curbuf',
+      \ [
+        \ 'One line before',
+        \ 'The line holding mark a',
+        \ 'One line after',
+      \ ])
+  let g:local_marks["'"] = SynthesizeMark("'", 2, 3, 'curbuf', '/foo/bar/curbuf',
+      \ [
+        \ 'one line before',
+        \ 'before latest jump',
+        \ 'one line after',
+      \ ])
+  let g:global_marks['A'] = SynthesizeMark('A', 5, 6, 'A_file.txt', '/foo/bar/A_file.txt',
+      \ [
+        \ 'A_file, one line before',
+        \ 'mark A',
+        \ 'A_file, one line after',
+      \ ])
+  let g:global_marks['1'] = SynthesizeMark('1', 6, 7, '1_file.txt', '/foo/bar/1_file.txt',
+      \ [
+        \ '1_file, one line before',
+        \ 'mark 1',
+        \ '1_file, one line after',
+      \ ])
+
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+
+Execute (MarkbarTextGenerator prints marks a and ' in that order):
+  call g:generator.format.setOption('marks_to_display', "a'")
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+  ['a]: (l: 1, c: 2)
+    One line before
+    The line holding mark a
+    One line after
+  ['']: (l: 2, c: 3) Last Jump
+    one line before
+    before latest jump
+    one line after
+
+Execute (MarkbarTextGenerator handles non-default format strings for local marks):
+  let g:chars = 'abcdefghijklmnopqrstuvwxyz'
+  let g:i = 0
+  while g:i <# len(g:chars)
+    let g:char = g:chars[g:i]
+    let g:local_marks[g:char] = SynthesizeMark(g:char, 1, 2,
+        \ 'foobar.txt', '/foo/bar/foobar.txt', ['', '', ''])
+    let i += 1
+  endwhile
+
+  call g:generator.format.setOption('local_mark_name_format_str',
+                                  \ 'local %d %d %s')
+  call g:generator.format.setOption('local_mark_name_arguments',
+                                  \ ['line', 'col', 'fname'])
+  call g:generator.format.setOption('marks_to_display', g:chars)
+  call g:generator.format.setOption('num_lines_context_around_local', 0)
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+  ['a]: local 1 2 foobar.txt
+  ['b]: local 1 2 foobar.txt
+  ['c]: local 1 2 foobar.txt
+  ['d]: local 1 2 foobar.txt
+  ['e]: local 1 2 foobar.txt
+  ['f]: local 1 2 foobar.txt
+  ['g]: local 1 2 foobar.txt
+  ['h]: local 1 2 foobar.txt
+  ['i]: local 1 2 foobar.txt
+  ['j]: local 1 2 foobar.txt
+  ['k]: local 1 2 foobar.txt
+  ['l]: local 1 2 foobar.txt
+  ['m]: local 1 2 foobar.txt
+  ['n]: local 1 2 foobar.txt
+  ['o]: local 1 2 foobar.txt
+  ['p]: local 1 2 foobar.txt
+  ['q]: local 1 2 foobar.txt
+  ['r]: local 1 2 foobar.txt
+  ['s]: local 1 2 foobar.txt
+  ['t]: local 1 2 foobar.txt
+  ['u]: local 1 2 foobar.txt
+  ['v]: local 1 2 foobar.txt
+  ['w]: local 1 2 foobar.txt
+  ['x]: local 1 2 foobar.txt
+  ['y]: local 1 2 foobar.txt
+  ['z]: local 1 2 foobar.txt
+
+Execute (MarkbarTextGenerator prints proper default names for punctuation marks):
+  let g:chars = '''<>"^.[](){}'
+  let g:i = 0
+  while g:i <# len(g:chars)
+    let g:char = g:chars[g:i]
+    let g:local_marks[g:char] = SynthesizeMark(g:char, 1, 2,
+        \ 'foobar.txt', '/foo/bar/foobar.txt', ['', '', ''])
+    let i += 1
+  endwhile
+
+  call g:generator.format.setOption('local_mark_name_format_str',
+                                  \ '%d %d %s: %s')
+  call g:generator.format.setOption(
+      \ 'local_mark_name_arguments',
+      \ ['line', 'col', 'fname', 'name'])
+  call g:generator.format.setOption('marks_to_display', g:chars)
+  call g:generator.format.setOption('num_lines_context_around_local', 0)
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+  ['']: 1 2 foobar.txt: Last Jump
+  ['<]: 1 2 foobar.txt: Selection Start
+  ['>]: 1 2 foobar.txt: Selection End
+  ['"]: 1 2 foobar.txt: Left Buffer
+  ['^]: 1 2 foobar.txt: Left Insert Mode
+  ['.]: 1 2 foobar.txt: Last Change
+  ['[]: 1 2 foobar.txt: Change/Yank Start
+  [']]: 1 2 foobar.txt: Change/Yank End
+  ['(]: 1 2 foobar.txt: Sentence Start
+  [')]: 1 2 foobar.txt: Sentence End
+  ['{]: 1 2 foobar.txt: Paragraph Start
+  ['}]: 1 2 foobar.txt: Paragraph End
+
+Execute (MarkbarTextGenerator prefers user-given names to default ones):
+  for [g:char, g:mark] in items(g:local_marks)
+    call g:mark.setUserName('foobar')
+  endfor
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+  ['']: 1 2 foobar.txt: foobar
+  ['<]: 1 2 foobar.txt: foobar
+  ['>]: 1 2 foobar.txt: foobar
+  ['"]: 1 2 foobar.txt: foobar
+  ['^]: 1 2 foobar.txt: foobar
+  ['.]: 1 2 foobar.txt: foobar
+  ['[]: 1 2 foobar.txt: foobar
+  [']]: 1 2 foobar.txt: foobar
+  ['(]: 1 2 foobar.txt: foobar
+  [')]: 1 2 foobar.txt: foobar
+  ['{]: 1 2 foobar.txt: foobar
+  ['}]: 1 2 foobar.txt: foobar
+
+Execute (MarkbarTextGenerator reverts to default names when user-given name is cleared):
+  for [g:char, g:mark] in items(g:local_marks)
+    call g:mark.setUserName('')
+  endfor
+  call PrintMarkbarText()
+Expect:
+  " this is verbose help text
+  " foobar
+  ['']: 1 2 foobar.txt: Last Jump
+  ['<]: 1 2 foobar.txt: Selection Start
+  ['>]: 1 2 foobar.txt: Selection End
+  ['"]: 1 2 foobar.txt: Left Buffer
+  ['^]: 1 2 foobar.txt: Left Insert Mode
+  ['.]: 1 2 foobar.txt: Last Change
+  ['[]: 1 2 foobar.txt: Change/Yank Start
+  [']]: 1 2 foobar.txt: Change/Yank End
+  ['(]: 1 2 foobar.txt: Sentence Start
+  [')]: 1 2 foobar.txt: Sentence End
+  ['{]: 1 2 foobar.txt: Paragraph Start
+  ['}]: 1 2 foobar.txt: Paragraph End
